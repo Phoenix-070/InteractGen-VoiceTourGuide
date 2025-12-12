@@ -1,0 +1,291 @@
+/**
+ * Voice Navigation Assistant - Styles
+ * Minimal, scoped styles that won't interfere with page styles
+ */
+
+/* Floating Button */
+.voice-nav-button {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 2147483647;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none;
+    -webkit-user-select: none;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.voice-nav-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2), 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.voice-nav-button:active {
+    transform: scale(0.95);
+}
+
+.voice-nav-button.listening {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    50% {
+        box-shadow: 0 4px 20px rgba(239, 68, 68, 0.6), 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+}
+
+/* Tooltip */
+.voice-nav-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.85);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    pointer-events: none;
+    z-index: 2147483648;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    transition: opacity 0.2s;
+}
+
+/* Tour Overlay */
+.voice-nav-tour-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2147483645;
+    pointer-events: none;
+}
+
+.voice-nav-dimmer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(2px);
+    pointer-events: all;
+}
+
+.voice-nav-tour-panel {
+    position: absolute;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    pointer-events: all;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+.voice-nav-tour-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.voice-nav-tour-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.voice-nav-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.voice-nav-close:hover {
+    background: #f3f4f6;
+    color: #111827;
+}
+
+.voice-nav-tour-content {
+    padding: 20px;
+}
+
+.voice-nav-tour-content p {
+    margin: 0 0 16px 0;
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.voice-nav-tour-controls {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.voice-nav-tour-controls button {
+    flex: 1;
+    min-width: 100px;
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #374151;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.voice-nav-tour-controls button:hover:not(:disabled) {
+    background: #f9fafb;
+    border-color: #9ca3af;
+}
+
+.voice-nav-tour-controls button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.voice-nav-tour-controls button:active:not(:disabled) {
+    transform: scale(0.98);
+}
+
+#voice-nav-tour-stop {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+}
+
+#voice-nav-tour-stop:hover:not(:disabled) {
+    background: #dc2626;
+    border-color: #dc2626;
+}
+
+/* Highlight */
+.voice-nav-highlight {
+    position: absolute;
+    pointer-events: none;
+    z-index: 2147483646;
+}
+
+/* Instructions */
+.voice-nav-instructions {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    padding: 24px;
+    max-width: 400px;
+    width: 90%;
+    z-index: 2147483648;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    animation: slideUp 0.3s ease-out;
+}
+
+.voice-nav-instructions h4 {
+    margin: 0 0 16px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.voice-nav-instructions ul {
+    margin: 0 0 16px 0;
+    padding-left: 20px;
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.8;
+}
+
+.voice-nav-instructions li {
+    margin-bottom: 8px;
+}
+
+.voice-nav-close-instructions {
+    width: 100%;
+    padding: 10px;
+    background: #667eea;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+
+.voice-nav-close-instructions:hover {
+    background: #5568d3;
+}
+
+/* Error Toast */
+.voice-nav-error {
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    background: #ef4444;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 2147483648;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 14px;
+    max-width: 300px;
+    animation: slideUp 0.3s ease-out;
+    transition: opacity 0.3s;
+}
+
+/* Container (hidden, used for organization) */
+.voice-nav-container {
+    display: none;
+}
+
