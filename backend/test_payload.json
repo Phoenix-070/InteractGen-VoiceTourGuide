@@ -1,0 +1,13 @@
+{
+    "url": "http://localhost:5173",
+    "title": "Test Page",
+    "elements": [
+        {
+            "tagName": "H1",
+            "text": "Hello World",
+            "id": "header1",
+            "className": "main-header",
+            "selector": "h1#header1"
+        }
+    ]
+}

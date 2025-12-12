@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "InteractGen Voice Tour",
+    "version": "1.0.0",
+    "action": {
+        "default_title": "Start Tour"
+    },
+    "permissions": [
+        "activeTab",
+        "scripting"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "src/content/index.tsx"
+            ]
+        }
+    ]
+}
