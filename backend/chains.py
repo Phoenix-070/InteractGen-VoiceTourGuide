@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
@@ -23,7 +23,7 @@ class DOMElement(BaseModel):
 
 # 1. Chain to Generate the Tour Script
 def get_tour_generator_chain():
-    llm = ChatOpenAI(model="gpt-4o", temperature=0.7)
+    llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-pro", temperature=0.7)
     
     parser = PydanticOutputParser(pydantic_object=TourPlan)
     
@@ -55,7 +55,7 @@ def get_tour_generator_chain():
 
 # 2. Chain to Answer Questions (Chat)
 def get_chat_chain():
-    llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.5)
+    llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-pro", temperature=0.5)
     
     template = """
     You are a helpful assistant viewing a webpage.

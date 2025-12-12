@@ -32,15 +32,15 @@ class ChatRequest(BaseModel):
 
 @app.get("/")
 def read_root():
-    return {"message": "Voice Tour API is running", "has_openai_key": "OPENAI_API_KEY" in os.environ}
+    return {"message": "Voice Tour API is running", "has_google_key": "GOOGLE_API_KEY" in os.environ}
 
 @app.post("/api/analyze")
 def analyze_page(content: PageContent):
-    if "OPENAI_API_KEY" not in os.environ:
+    if "GOOGLE_API_KEY" not in os.environ:
          # Fallback for demo/testing without key
          return {
              "tour_script": [
-                 {"element_selector": "h1", "narrative": f"Welcome to {content.title}. This is a headline.", "action": "scroll"}
+                 {"element_selector": "h1", "narrative": f"Welcome to {content.title}. Please set GOOGLE_API_KEY to get a real AI tour.", "action": "scroll"}
              ]
          }
     
@@ -63,8 +63,8 @@ def analyze_page(content: PageContent):
 
 @app.post("/api/chat")
 def chat_with_page(request: ChatRequest):
-    if "OPENAI_API_KEY" not in os.environ:
-        return {"response": "I need an OpenAI API Key to answer questions."}
+    if "GOOGLE_API_KEY" not in os.environ:
+        return {"response": "I need a Google API Key to answer questions."}
     
     try:
         chain = get_chat_chain()
