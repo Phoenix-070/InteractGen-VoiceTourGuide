@@ -9,4 +9,21 @@ export default defineConfig({
     react(),
     crx({ manifest }),
   ],
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) {
+              return 'firebase';
+            }
+            if (id.includes('react') || id.includes('framer-motion')) {
+              return 'vendor';
+            }
+          }
+        },
+      },
+    },
+  },
 })

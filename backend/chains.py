@@ -6,7 +6,7 @@ from schemas import TourPlan, ChatResponse
 # 1. Chain to Generate the Tour Script
 def get_tour_generator_chain():
     # Using gemini-pro as it is available
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+    llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.7)
     
     parser = PydanticOutputParser(pydantic_object=TourPlan)
     
@@ -23,11 +23,12 @@ def get_tour_generator_chain():
     {dom_elements}
     
     Instructions:
-    1. Select the most relevant elements that match the user's intent.
-    2. Create a linear script. For each step, provide a CSS selector (use IDs or explicit text matching if needed) and a friendly narrative.
-    3. Keep the narrative concise (1-2 sentences) and conversational.
-    4. Ensure the CSS selectors are accurate based on the provided JSON.
-    5. If the user wants to go to a completely different page/website, use action="navigate" and set the "url" field to the full URL (e.g. https://www.google.com).
+    1. Analyze the 'Visible Elements' to understand the page content flow.
+    2. Create a tour script that feels like a human guide reading the most interesting parts to the user.
+    3. **CRITICAL**: Do NOT just list headers. If you see a paragraph (P) with content, include it in the narrative so the user learns something.
+    4. **Scrolling**: The tour must scroll down the page. Select elements occurring later in the list to trigger scrolling.
+    5. **Narrative**: The narrative should be conversational, informative, and connect steps logically. (e.g. "Now, moving down to the history section...", "Here we can see...").
+    6. Ensure the CSS selectors are accurate based on the provided JSON. Use the exact selectors provided.
     
     {format_instructions}
     """
@@ -39,7 +40,7 @@ def get_tour_generator_chain():
 
 # 2. Chain to Answer Questions (Chat)
 def get_chat_chain():
-    llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.5)
+    llm = ChatGoogleGenerativeAI(model="models/gemini-2.5-flash", temperature=0.5)
     
     parser = PydanticOutputParser(pydantic_object=ChatResponse)
     

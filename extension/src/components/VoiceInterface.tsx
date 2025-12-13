@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { X, Play, Pause, SkipForward, SkipBack, Mic, Square } from 'lucide-react';
+import { X, Play, Pause, SkipForward, SkipBack, Mic, Square, User } from 'lucide-react';
 import { scanPage } from '../content/domScanner';
 import { generateTour, sendChatMessage } from '../services/api';
 import VoiceOrb from './VoiceOrb';
+import Profile from './Profile';
 
 // Simple type for SpeechRecognition (browser specific)
 interface IWindow extends Window {
@@ -30,6 +31,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onClose }) => {
     const [userInput, setUserInput] = useState("");
     const [isListening, setIsListening] = useState(false);
     const [showChat, setShowChat] = useState(false); // Toggle chat view
+    const [showProfile, setShowProfile] = useState(false); // Toggle profile view
     const chatEndRef = useRef<HTMLDivElement>(null);
 
     // Safety Modal State
@@ -274,7 +276,7 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onClose }) => {
         <motion.div
             layoutId="interactgen-container"
             initial={{ borderRadius: '28px', width: '56px', height: '56px' }}
-            animate={{ width: '350px', height: showChat ? '500px' : '400px', borderRadius: '24px' }}
+            animate={{ width: '350px', height: (showChat || showProfile) ? '500px' : '400px', borderRadius: '24px' }}
             exit={{ width: '56px', height: '56px', borderRadius: '50%' }}
             style={{
                 position: 'fixed',
@@ -293,189 +295,200 @@ const VoiceInterface: React.FC<VoiceInterfaceProps> = ({ onClose }) => {
             {/* Header */}
             <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#111' }}>InteractGen</span>
+                    <span style={{ fontWeight: 600, fontSize: '14px', color: '#111' }}>NaviBot</span>
                 </div>
-                <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
-                    <X size={18} />
-                </button>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={() => setShowProfile(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
+                        <User size={18} />
+                    </button>
+                    <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}>
+                        <X size={18} />
+                    </button>
+                </div>
             </div>
 
-            {/* Main Content Area */}
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            {showProfile ? (
+                <Profile onBack={() => setShowProfile(false)} />
+            ) : (
+                <>
+                    {/* Main Content Area */}
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
 
-                {/* Voice Orb Area - Always visible but shrinks if chat is open */}
-                <motion.div
-                    animate={{ scale: showChat ? 0.6 : 1, y: showChat ? -20 : 0 }}
-                    style={{ flexShrink: 0 }}
-                >
-                    <VoiceOrb isActive={isListening || orbMode !== 'idle'} mode={orbMode} />
-                </motion.div>
+                        {/* Voice Orb Area - Always visible but shrinks if chat is open */}
+                        <motion.div
+                            animate={{ scale: showChat ? 0.6 : 1, y: showChat ? -20 : 0 }}
+                            style={{ flexShrink: 0 }}
+                        >
+                            <VoiceOrb isActive={isListening || orbMode !== 'idle'} mode={orbMode} />
+                        </motion.div>
 
-                {/* Status Text */}
-                <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    style={{
-                        marginTop: '16px',
-                        fontSize: '16px',
-                        fontWeight: 500,
-                        color: '#333',
-                        textAlign: 'center',
-                        maxWidth: '80%'
-                    }}
-                >
-                    {status === "Ready" ? (showChat ? "" : "How can I help you?") : status}
-                </motion.p>
-
-                {/* Step Narrative (if active) */}
-                {currentStepIndex >= 0 && tourData?.steps?.[currentStepIndex] && !showChat && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        style={{ marginTop: '12px', padding: '0 20px', textAlign: 'center', fontSize: '14px', color: '#555' }}
-                    >
-                        "{tourData.steps[currentStepIndex].narrative}"
-                    </motion.div>
-                )}
-
-                {/* Chat Messages (Overlay or Toggle) */}
-                {showChat && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        style={{
-                            position: 'absolute',
-                            top: '60px',
-                            bottom: '80px',
-                            width: '100%',
-                            padding: '0 16px',
-                            overflowY: 'auto',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '8px',
-                            background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 10%)'
-                        }}
-                    >
-                        {messages.map((msg, idx) => (
-                            <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
-                                <div style={{
-                                    backgroundColor: msg.role === 'user' ? '#3B82F6' : '#F3F4F6',
-                                    color: msg.role === 'user' ? 'white' : '#1F2937',
-                                    padding: '8px 12px',
-                                    borderRadius: '12px',
-                                    fontSize: '13px',
-                                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                                }}>
-                                    {msg.text}
-                                </div>
-                                {msg.suggestions && (
-                                    <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                                        {msg.suggestions.map((suggestion, sIdx) => (
-                                            <button
-                                                key={sIdx}
-                                                onClick={() => handleSendMessage(suggestion)}
-                                                style={{
-                                                    backgroundColor: '#E0F2FE',
-                                                    color: '#0284C7',
-                                                    border: '1px solid #BAE6FD',
-                                                    borderRadius: '12px',
-                                                    padding: '4px 10px',
-                                                    fontSize: '11px',
-                                                    cursor: 'pointer',
-                                                    textAlign: 'left'
-                                                }}
-                                            >
-                                                {suggestion}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                        <div ref={chatEndRef} />
-                    </motion.div>
-                )}
-            </div>
-
-            {/* Bottom Controls */}
-            <div style={{ padding: '16px', borderTop: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.5)' }}>
-
-                {/* Tour Controls or Chat Input */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-
-                    {/* Input Field w/ Mic */}
-                    <div style={{ flex: 1, position: 'relative' }}>
-                        <input
-                            type="text"
-                            value={userInput}
-                            onChange={(e) => setUserInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(userInput)}
-                            placeholder="Ask or say command..."
+                        {/* Status Text */}
+                        <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             style={{
-                                width: '100%',
-                                padding: '10px 40px 10px 12px',
-                                borderRadius: '20px',
-                                border: '1px solid #E5E7EB',
-                                outline: 'none',
-                                fontSize: '14px',
-                                backgroundColor: '#F9FAFB'
-                            }}
-                        />
-                        <button
-                            onClick={() => isListening ? setIsListening(false) : startListening()}
-                            style={{
-                                position: 'absolute',
-                                right: '4px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                border: 'none',
-                                background: isListening ? '#EF4444' : 'transparent',
-                                borderRadius: '50%',
-                                width: '30px',
-                                height: '30px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: isListening ? 'white' : '#6B7280'
+                                marginTop: '16px',
+                                fontSize: '16px',
+                                fontWeight: 500,
+                                color: '#333',
+                                textAlign: 'center',
+                                maxWidth: '80%'
                             }}
                         >
-                            <Mic size={16} />
-                        </button>
+                            {status === "Ready" ? (showChat ? "" : "How can I help you?") : status}
+                        </motion.p>
+
+                        {/* Step Narrative (if active) */}
+                        {currentStepIndex >= 0 && tourData?.steps?.[currentStepIndex] && !showChat && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                style={{ marginTop: '12px', padding: '0 20px', textAlign: 'center', fontSize: '14px', color: '#555' }}
+                            >
+                                "{tourData.steps[currentStepIndex].narrative}"
+                            </motion.div>
+                        )}
+
+                        {/* Chat Messages (Overlay or Toggle) */}
+                        {showChat && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                style={{
+                                    position: 'absolute',
+                                    top: '60px',
+                                    bottom: '80px',
+                                    width: '100%',
+                                    padding: '0 16px',
+                                    overflowY: 'auto',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '8px',
+                                    background: 'linear-gradient(to bottom, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 10%)'
+                                }}
+                            >
+                                {messages.map((msg, idx) => (
+                                    <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '85%' }}>
+                                        <div style={{
+                                            backgroundColor: msg.role === 'user' ? '#3B82F6' : '#F3F4F6',
+                                            color: msg.role === 'user' ? 'white' : '#1F2937',
+                                            padding: '8px 12px',
+                                            borderRadius: '12px',
+                                            fontSize: '13px',
+                                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                                        }}>
+                                            {msg.text}
+                                        </div>
+                                        {msg.suggestions && (
+                                            <div style={{ marginTop: '6px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                {msg.suggestions.map((suggestion, sIdx) => (
+                                                    <button
+                                                        key={sIdx}
+                                                        onClick={() => handleSendMessage(suggestion)}
+                                                        style={{
+                                                            backgroundColor: '#E0F2FE',
+                                                            color: '#0284C7',
+                                                            border: '1px solid #BAE6FD',
+                                                            borderRadius: '12px',
+                                                            padding: '4px 10px',
+                                                            fontSize: '11px',
+                                                            cursor: 'pointer',
+                                                            textAlign: 'left'
+                                                        }}
+                                                    >
+                                                        {suggestion}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                                <div ref={chatEndRef} />
+                            </motion.div>
+                        )}
                     </div>
 
-                    {/* Action Buttons */}
-                    {status === "Ready" && !isPlaying && (
-                        <button
-                            onClick={handleStartTour}
-                            style={{
-                                backgroundColor: '#10B981',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '20px',
-                                padding: '10px 16px',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                whiteSpace: 'nowrap'
-                            }}
-                        >
-                            Start Tour
-                        </button>
-                    )}
+                    {/* Bottom Controls */}
+                    <div style={{ padding: '16px', borderTop: '1px solid rgba(0,0,0,0.05)', background: 'rgba(255,255,255,0.5)' }}>
 
-                    {isPlaying && (
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            <button onClick={handlePrev} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}><SkipBack size={14} /></button>
-                            <button onClick={() => setIsPlaying(!isPlaying)} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>
-                                {isPlaying ? <Pause size={14} /> : <Play size={14} />}
-                            </button>
-                            <button onClick={handleNext} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}><SkipForward size={14} /></button>
-                            <button onClick={handleStopTour} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: '#FEE2E2', color: '#EF4444', cursor: 'pointer' }}><Square size={14} /></button>
+                        {/* Tour Controls or Chat Input */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                            {/* Input Field w/ Mic */}
+                            <div style={{ flex: 1, position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    value={userInput}
+                                    onChange={(e) => setUserInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleSendMessage(userInput)}
+                                    placeholder="Ask or say command..."
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 40px 10px 12px',
+                                        borderRadius: '20px',
+                                        border: '1px solid #E5E7EB',
+                                        outline: 'none',
+                                        fontSize: '14px',
+                                        backgroundColor: '#F9FAFB'
+                                    }}
+                                />
+                                <button
+                                    onClick={() => isListening ? setIsListening(false) : startListening()}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '4px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        border: 'none',
+                                        background: isListening ? '#EF4444' : 'transparent',
+                                        borderRadius: '50%',
+                                        width: '30px',
+                                        height: '30px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: isListening ? 'white' : '#6B7280'
+                                    }}
+                                >
+                                    <Mic size={16} />
+                                </button>
+                            </div>
+
+                            {/* Action Buttons */}
+                            {status === "Ready" && !isPlaying && (
+                                <button
+                                    onClick={handleStartTour}
+                                    style={{
+                                        backgroundColor: '#10B981',
+                                        color: 'white',
+                                        border: 'none',
+                                        borderRadius: '20px',
+                                        padding: '10px 16px',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    Start Tour
+                                </button>
+                            )}
+
+                            {isPlaying && (
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    <button onClick={handlePrev} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}><SkipBack size={14} /></button>
+                                    <button onClick={() => setIsPlaying(!isPlaying)} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}>
+                                        {isPlaying ? <Pause size={14} /> : <Play size={14} />}
+                                    </button>
+                                    <button onClick={handleNext} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: 'white', cursor: 'pointer' }}><SkipForward size={14} /></button>
+                                    <button onClick={handleStopTour} style={{ padding: '8px', borderRadius: '50%', border: '1px solid #ddd', background: '#FEE2E2', color: '#EF4444', cursor: 'pointer' }}><Square size={14} /></button>
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                </>
+            )}
 
             {/* Safety Modal (Ported) */}
             {showSafetyModal && (
