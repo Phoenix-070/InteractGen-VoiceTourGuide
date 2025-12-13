@@ -11,8 +11,12 @@ interface IWindow extends Window {
 const TourOverlay: React.FC = () => {
     // Tour State
     const [status, setStatus] = useState<string>("Ready");
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [tourData, setTourData] = useState<any>(null);
+    const [currentStepIndex, setCurrentStepIndex] = useState<number>(-1);
+    const [isPlaying, setIsPlaying] = useState<boolean>(false);
+
+    // Refs for highlighting
+    const activeHighlightRef = useRef<HTMLElement | null>(null);
 
     // Chat State
     const [messages, setMessages] = useState<{ role: 'user' | 'assistant', text: string }[]>([]);
@@ -20,13 +24,111 @@ const TourOverlay: React.FC = () => {
     const [isListening, setIsListening] = useState(false);
     const chatEndRef = useRef<HTMLDivElement>(null);
 
+    // Safety Modal State
+    const [showSafetyModal, setShowSafetyModal] = useState(false);
+    const [pendingAction, setPendingAction] = useState<{ type: string, element: HTMLElement } | null>(null);
+
     // Scroll to bottom of chat
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
+    // --- Tour Execution Effect ---
+    useEffect(() => {
+        if (currentStepIndex >= 0 && tourData?.steps && currentStepIndex < tourData.steps.length) {
+            executeStep(tourData.steps[currentStepIndex]);
+        } else if (tourData && currentStepIndex >= tourData.steps.length) {
+            setStatus("Tour Completed");
+            setIsPlaying(false);
+            clearHighlight();
+        }
+    }, [currentStepIndex, tourData]);
+
+    const clearHighlight = () => {
+        if (activeHighlightRef.current) {
+            activeHighlightRef.current.style.outline = '';
+            activeHighlightRef.current.style.backgroundColor = '';
+            activeHighlightRef.current = null;
+        }
+    };
+
+    const executeStep = (step: any) => {
+        clearHighlight();
+        setStatus(`Step ${currentStepIndex + 1}/${tourData.steps.length}`);
+
+        // 1. Find Element
+        const el = document.querySelector(step.element_selector) as HTMLElement;
+        if (el) {
+            // 2. Scroll
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // 3. Highlight
+            activeHighlightRef.current = el;
+            el.style.outline = '4px solid #facc15'; // Yellow highlight
+            el.style.backgroundColor = 'rgba(250, 204, 21, 0.2)';
+        }
+
+        // 4. Handle Action
+        if (step.action === 'click' && el) {
+            // Show safety modal
+            setPendingAction({ type: 'click', element: el });
+            setShowSafetyModal(true);
+        } else {
+            // For scroll or none, proceed
+            performAction(step.action, el);
+        }
+
+        // 5. Speak
+        speak(step.narrative, () => {
+            // On end
+            if (isPlaying && step.action !== 'click') {
+                // Auto advance after a brief pause, but not for clicks
+                setTimeout(() => {
+                    setCurrentStepIndex(prev => prev + 1);
+                }, 1500);
+            }
+        });
+    };
+
+    const performAction = (action: string, el: HTMLElement | null) => {
+        if (action === 'click' && el) {
+            el.click();
+        }
+        // Add other actions if needed
+    };
+
+    const confirmAction = () => {
+        if (pendingAction) {
+            performAction(pendingAction.type, pendingAction.element);
+            setPendingAction(null);
+            setShowSafetyModal(false);
+            if (isPlaying) {
+                setTimeout(() => {
+                    setCurrentStepIndex(prev => prev + 1);
+                }, 500);
+            }
+        }
+    };
+
+    const cancelAction = () => {
+        setPendingAction(null);
+        setShowSafetyModal(false);
+        if (isPlaying) {
+            setTimeout(() => {
+                setCurrentStepIndex(prev => prev + 1);
+            }, 500);
+        }
+    };
+
     // --- Tour Logic ---
     const handleStartTour = async () => {
+        if (tourData && currentStepIndex === -1) {
+            // Restart
+            setCurrentStepIndex(0);
+            setIsPlaying(true);
+            return;
+        }
+
         setStatus("Scanning Page...");
         try {
             const elements = scanPage();
@@ -36,20 +138,37 @@ const TourOverlay: React.FC = () => {
                 return;
             }
 
-            setStatus(`Generating Tour (${elements.length} els)...`);
-
+            setStatus(`Generating Tour...`);
             const tour = await generateTour(document.title, elements);
             setTourData(tour);
-            setStatus(`Ready to guide! (${tour.steps?.length || 0} steps)`);
 
-            console.log("Tour Generated:", tour);
-            // Auto-speak first step?
-            // speak(tour.steps[0].narrative);
+            // Auto start
+            setStatus(`Starting Tour...`);
+            setCurrentStepIndex(0);
+            setIsPlaying(true);
 
         } catch (error: any) {
             console.error(error);
             setStatus(`Error: ${error.message || "Unknown"}`);
         }
+    };
+
+    const handleStopTour = () => {
+        setIsPlaying(false);
+        setCurrentStepIndex(-1);
+        clearHighlight();
+        window.speechSynthesis.cancel();
+        setStatus("Ready");
+    };
+
+    const handleNext = () => {
+        window.speechSynthesis.cancel();
+        setCurrentStepIndex(prev => prev + 1);
+    };
+
+    const handlePrev = () => {
+        window.speechSynthesis.cancel();
+        setCurrentStepIndex(prev => Math.max(0, prev - 1));
     };
 
     // --- Voice Logic (STT) ---
@@ -70,7 +189,7 @@ const TourOverlay: React.FC = () => {
         recognition.onresult = (event: any) => {
             const transcript = event.results[0][0].transcript;
             setUserInput(transcript);
-            handleSendMessage(transcript); // Auto-send on voice end?
+            handleSendMessage(transcript);
             setIsListening(false);
         };
 
@@ -90,22 +209,18 @@ const TourOverlay: React.FC = () => {
     const handleSendMessage = async (text: string) => {
         if (!text.trim()) return;
 
-        // Add User Message
+        // Pause tour if chatting
+        if (isPlaying) setIsPlaying(false);
+        window.speechSynthesis.cancel();
+
         const newMessages: any[] = [...messages, { role: 'user', text }];
         setMessages(newMessages);
-        setUserInput(""); // Clear input if it was manual
+        setUserInput("");
 
         try {
-            // Get Context
             const elements = scanPage();
-
-            // Call Backend
-            const responseText = await sendChatMessage(text, document.title, elements);
-
-            // Add Assistant Message
+            const { text: responseText } = await sendChatMessage(text, document.title, elements);
             setMessages([...newMessages, { role: 'assistant', text: responseText }]);
-
-            // Speak Response
             speak(responseText);
 
         } catch (error) {
@@ -114,8 +229,12 @@ const TourOverlay: React.FC = () => {
         }
     };
 
-    const speak = (text: string) => {
+    const speak = (text: string, onEnd?: () => void) => {
+        window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        utterance.onend = () => {
+            if (onEnd) onEnd();
+        };
         window.speechSynthesis.speak(utterance);
     };
 
@@ -128,7 +247,7 @@ const TourOverlay: React.FC = () => {
             backgroundColor: 'white',
             borderRadius: '12px',
             boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-            zIndex: 2147483647, // Max Z
+            zIndex: 2147483647,
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
             color: '#333',
             display: 'flex',
@@ -151,6 +270,20 @@ const TourOverlay: React.FC = () => {
                 <span style={{ fontSize: '12px', color: '#666' }}>{status}</span>
             </div>
 
+            {/* Current Step Display */}
+            {currentStepIndex >= 0 && tourData?.steps?.[currentStepIndex] && (
+                <div style={{ padding: '16px', backgroundColor: '#fffbeb', borderBottom: '1px solid #eee' }}>
+                    <p style={{ margin: 0, fontSize: '14px', fontStyle: 'italic' }}>
+                        "{tourData.steps[currentStepIndex].narrative}"
+                    </p>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+                        <button onClick={handlePrev} style={{ border: '1px solid #ddd', background: 'white', borderRadius: '4px', cursor: 'pointer' }}>Prev</button>
+                        <button onClick={() => setIsPlaying(!isPlaying)} style={{ border: '1px solid #ddd', background: 'white', borderRadius: '4px', cursor: 'pointer' }}>{isPlaying ? 'Pause' : 'Play'}</button>
+                        <button onClick={handleNext} style={{ border: '1px solid #ddd', background: 'white', borderRadius: '4px', cursor: 'pointer' }}>Next</button>
+                    </div>
+                </div>
+            )}
+
             {/* Chat History */}
             <div style={{
                 flex: 1,
@@ -162,9 +295,9 @@ const TourOverlay: React.FC = () => {
                 flexDirection: 'column',
                 gap: '8px'
             }}>
-                {messages.length === 0 && (
+                {messages.length === 0 && currentStepIndex === -1 && (
                     <div style={{ textAlign: 'center', color: '#999', marginTop: '20px', fontSize: '14px' }}>
-                        👋 Hi! Ask me anything about this page.
+                        👋 Click "Start Tour" or ask a question!
                     </div>
                 )}
                 {messages.map((msg, idx) => (
@@ -186,27 +319,44 @@ const TourOverlay: React.FC = () => {
 
             {/* Controls */}
             <div style={{ padding: '12px', borderTop: '1px solid #eee' }}>
-                {/* Tour Controls (Mini) */}
                 <div style={{ display: 'flex', marginBottom: '8px', gap: '8px' }}>
-                    <button
-                        onClick={handleStartTour}
-                        style={{
-                            flex: 1,
-                            backgroundColor: '#10B981',
-                            color: 'white',
-                            border: 'none',
-                            padding: '8px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '13px',
-                            fontWeight: 500
-                        }}
-                    >
-                        Start Tour
-                    </button>
+                    {currentStepIndex === -1 ? (
+                        <button
+                            onClick={handleStartTour}
+                            style={{
+                                flex: 1,
+                                backgroundColor: '#10B981',
+                                color: 'white',
+                                border: 'none',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 500
+                            }}
+                        >
+                            Start Tour
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleStopTour}
+                            style={{
+                                flex: 1,
+                                backgroundColor: '#EF4444',
+                                color: 'white',
+                                border: 'none',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '13px',
+                                fontWeight: 500
+                            }}
+                        >
+                            Stop Tour
+                        </button>
+                    )}
                 </div>
 
-                {/* Input Area */}
                 <div style={{ display: 'flex', gap: '8px' }}>
                     <input
                         type="text"
@@ -237,7 +387,6 @@ const TourOverlay: React.FC = () => {
                             alignItems: 'center',
                             justifyContent: 'center'
                         }}
-                        title="Voice Input"
                     >
                         {isListening ? '🛑' : '🎤'}
                     </button>
@@ -254,6 +403,64 @@ const TourOverlay: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Safety Modal */}
+            {showSafetyModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2147483648
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        padding: '20px',
+                        borderRadius: '12px',
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                        maxWidth: '400px',
+                        textAlign: 'center'
+                    }}>
+                        <h3 style={{ margin: '0 0 16px 0', fontSize: '18px' }}>Confirm Action</h3>
+                        <p style={{ margin: '0 0 20px 0', color: '#666' }}>
+                            The tour wants to click on an element. This may navigate or interact with the page. Proceed?
+                        </p>
+                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                            <button
+                                onClick={confirmAction}
+                                style={{
+                                    backgroundColor: '#10B981',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Confirm
+                            </button>
+                            <button
+                                onClick={cancelAction}
+                                style={{
+                                    backgroundColor: '#EF4444',
+                                    color: 'white',
+                                    border: 'none',
+                                    padding: '8px 16px',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

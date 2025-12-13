@@ -31,7 +31,7 @@ export const generateTour = async (pageTitle: string, elements: SimplifiedElemen
     }
 };
 
-export const sendChatMessage = async (query: string, pageTitle: string, elements: SimplifiedElement[]): Promise<string> => {
+export const sendChatMessage = async (query: string, pageTitle: string, elements: SimplifiedElement[]): Promise<{ text: string, suggestions: string[] }> => {
     try {
         const response = await axios.post(`${API_BASE_URL}/chat`, {
             query: query,
@@ -41,7 +41,10 @@ export const sendChatMessage = async (query: string, pageTitle: string, elements
                 elements: elements
             }
         });
-        return response.data.response;
+        return {
+            text: response.data.response,
+            suggestions: response.data.suggestions || []
+        };
     } catch (error) {
         console.error('Error sending chat message:', error);
         throw error;

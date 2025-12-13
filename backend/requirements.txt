@@ -3,5 +3,8 @@ uvicorn
 langchain
 langchain-openai
 langchain-google-genai
+google-generativeai
 pydantic
 python-dotenv
+pytest
+httpx

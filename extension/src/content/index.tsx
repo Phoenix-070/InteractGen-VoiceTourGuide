@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import TourOverlay from '../components/TourOverlay';
+import FloatingInterface from '../components/FloatingInterface';
 // import '../index.css'; // We will handle styles within Shadow DOM or import explicitly if needed
 
 const rootId = 'interactgen-tour-root';
@@ -32,7 +32,7 @@ function inject() {
     const root = ReactDOM.createRoot(rootDiv);
     root.render(
         <React.StrictMode>
-            <TourOverlay />
+            <FloatingInterface />
         </React.StrictMode>
     );
 }
